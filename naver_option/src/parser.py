@@ -71,11 +71,11 @@ def parse_data_file(data_path: str, logger: logging.Logger) -> List[OptionGroup]
 
     # 옵션 그룹 개수 검증 (1~3개)
     if len(lines) == 0:
-        raise ValueError("input.txt 파일에 유효한 데이터가 없습니다. 최소 1개의 옵션 그룹을 작성해주세요.")
+        raise ValueError("data.txt 파일에 유효한 데이터가 없습니다. 최소 1개의 옵션 그룹을 작성해주세요.")
     if len(lines) > 3:
         raise ValueError(
             f"옵션 그룹은 최대 3개까지 등록 가능합니다. (현재: {len(lines)}개)\n"
-            "input.txt에서 4번째 줄 이후를 제거해주세요."
+            "data.txt에서 4번째 줄 이후를 제거해주세요."
         )
 
     option_groups: List[OptionGroup] = []
