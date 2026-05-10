@@ -19,10 +19,18 @@
 import os
 import sys
 
-# 현재 파일 기준으로 src 디렉토리를 모듈 경로에 추가
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SRC_DIR = os.path.join(BASE_DIR, "src")
-sys.path.insert(0, SRC_DIR)
+# PyInstaller --onefile 빌드 및 일반 실행 모두 대응
+# 실행 파일(EXE) 기준 경로와 스크립트 기준 경로를 모두 sys.path에 추가
+if getattr(sys, 'frozen', False):
+    # PyInstaller로 빌드된 EXE 실행 시
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    # 일반 python 실행 시
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 루트 디렉토리를 sys.path 최우선으로 추가
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
 from logger import setup_logger
 from parser import parse_data_file
