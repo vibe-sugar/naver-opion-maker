@@ -2,15 +2,18 @@
 # 파일명: parser.py
 # 목적: data 디렉토리의 텍스트 파일을 읽어 옵션 데이터를 파싱하는 모듈
 # 작성일: 2026-05-10
-# 버전: 1.0.0
+# 버전: 1.1.0
 # =============================================================================
 
 """
 데이터 파싱 모듈
 
-data/input.txt 파일을 읽어 옵션 그룹과 각 옵션 항목(이름, 가격)을 파싱합니다.
+data/data.txt    : 옵션 그룹과 각 옵션 항목(이름, 가격)을 파싱합니다.
+data/price.txt   : 상품의 기본 가격(base price)을 읽습니다.
+data/minus.txt   : 옵션가가 음수일 때 처리 방식을 결정합니다.
+                   1 → 음수 그대로 허용 / 0 → 음수를 0원으로 치환
 
-input.txt 형식:
+data.txt 형식:
     - 각 줄 = 하나의 옵션 그룹 (선택1, 선택2, 선택3 순서)
     - 한 줄 안에서 여러 항목은 쉼표(,)로 구분
     - 각 항목 형식: 옵션명$가격
@@ -30,6 +33,101 @@ from typing import List, Tuple
 OptionItem = Tuple[str, int]
 # 옵션 그룹: 여러 항목의 리스트
 OptionGroup = List[OptionItem]
+
+
+def parse_price_file(price_path: str, logger: logging.Logger) -> int:
+    """
+    price.txt 파일을 읽어 기본 상품 가격을 반환합니다.
+
+    Args:
+        price_path (str): price.txt 파일의 전체 경로
+        logger (logging.Logger): 로거 인스턴스
+
+    Returns:
+        int: 기본 상품 가격 (0 이상의 정수)
+
+    Raises:
+        FileNotFoundError: price.txt 파일이 존재하지 않을 때
+        ValueError: 파일 내용이 숫자가 아니거나 음수일 때
+    """
+    logger.info(f"기본 가격 파일 읽기: {price_path}")
+
+    if not os.path.exists(price_path):
+        raise FileNotFoundError(
+            f"price.txt 파일을 찾을 수 없습니다: {price_path}\n"
+            "data 폴더 안에 price.txt 파일을 생성하고 기본 상품 가격을 입력해주세요.\n"
+            "예) 15000"
+        )
+
+    with open(price_path, "r", encoding="utf-8") as f:
+        content = f.read().strip()
+
+    if not content:
+        raise ValueError(
+            "price.txt 파일이 비어있습니다.\n"
+            "파일에 기본 상품 가격(숫자)을 입력해주세요. 예) 15000"
+        )
+
+    try:
+        base_price = int(content.replace(",", ""))
+    except ValueError:
+        raise ValueError(
+            f"price.txt의 값이 올바르지 않습니다: '{content}'\n"
+            "숫자만 입력해주세요. 예) 15000"
+        )
+
+    if base_price < 0:
+        raise ValueError(
+            f"price.txt의 기본 가격은 0 이상이어야 합니다: {base_price}"
+        )
+
+    logger.info(f"기본 상품 가격: {base_price:,}원")
+    return base_price
+
+
+def parse_minus_file(minus_path: str, logger: logging.Logger) -> bool:
+    """
+    minus.txt 파일을 읽어 마이너스 옵션가 허용 여부를 반환합니다.
+
+    파일 내용:
+        1 → 마이너스 옵션가 그대로 허용
+        0 → 마이너스 옵션가를 0원으로 치환
+
+    Args:
+        minus_path (str): minus.txt 파일의 전체 경로
+        logger (logging.Logger): 로거 인스턴스
+
+    Returns:
+        bool: True = 마이너스 허용, False = 마이너스를 0원으로 치환
+
+    Raises:
+        FileNotFoundError: minus.txt 파일이 존재하지 않을 때
+        ValueError: 파일 내용이 0 또는 1이 아닐 때
+    """
+    logger.info(f"마이너스 설정 파일 읽기: {minus_path}")
+
+    if not os.path.exists(minus_path):
+        raise FileNotFoundError(
+            f"minus.txt 파일을 찾을 수 없습니다: {minus_path}\n"
+            "data 폴더 안에 minus.txt 파일을 생성하고 0 또는 1을 입력해주세요.\n"
+            "  1 → 마이너스 옵션가 그대로 허용\n"
+            "  0 → 마이너스 옵션가를 0원으로 치환"
+        )
+
+    with open(minus_path, "r", encoding="utf-8") as f:
+        content = f.read().strip()
+
+    if content not in ("0", "1"):
+        raise ValueError(
+            f"minus.txt의 값이 올바르지 않습니다: '{content}'\n"
+            "0 또는 1만 입력해주세요.\n"
+            "  1 → 마이너스 옵션가 그대로 허용\n"
+            "  0 → 마이너스 옵션가를 0원으로 치환"
+        )
+
+    allow_minus = (content == "1")
+    logger.info(f"마이너스 옵션가 처리: {'허용' if allow_minus else '0원으로 치환'}")
+    return allow_minus
 
 
 def parse_data_file(data_path: str, logger: logging.Logger) -> List[OptionGroup]:

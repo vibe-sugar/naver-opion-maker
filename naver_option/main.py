@@ -2,7 +2,7 @@
 # 파일명: main.py
 # 목적: 네이버 옵션 조합 생성 프로그램의 메인 실행 파일
 # 작성일: 2026-05-10
-# 버전: 1.0.0
+# 버전: 1.1.0
 # =============================================================================
 
 """
@@ -33,15 +33,17 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from logger import setup_logger
-from parser import parse_data_file
+from parser import parse_data_file, parse_price_file, parse_minus_file
 from combinator import generate_combinations
 from excel_writer import write_excel
 
 
 # ── 경로 상수 ──
-DATA_PATH = os.path.join(BASE_DIR, "data", "data.txt")
+DATA_PATH  = os.path.join(BASE_DIR, "data", "data.txt")
+PRICE_PATH = os.path.join(BASE_DIR, "data", "price.txt")
+MINUS_PATH = os.path.join(BASE_DIR, "data", "minus.txt")
 RESULT_DIR = os.path.join(BASE_DIR, "result")
-LOG_DIR = BASE_DIR  # log.txt는 프로그램 루트에 저장
+LOG_DIR    = BASE_DIR  # log.txt는 프로그램 루트에 저장
 
 
 def main() -> None:
@@ -56,7 +58,14 @@ def main() -> None:
     logger = setup_logger(LOG_DIR)
 
     try:
-        # ── Step 2: 데이터 파일 파싱 ──
+        # ── Step 2: 기본 가격 / 마이너스 설정 파싱 ──
+        logger.info(f"기본 가격 파일 경로: {PRICE_PATH}")
+        base_price = parse_price_file(PRICE_PATH, logger)
+
+        logger.info(f"마이너스 설정 파일 경로: {MINUS_PATH}")
+        allow_minus = parse_minus_file(MINUS_PATH, logger)
+
+        # ── Step 3: 옵션 데이터 파일 파싱 ──
         logger.info(f"데이터 파일 경로: {DATA_PATH}")
         option_groups = parse_data_file(DATA_PATH, logger)
 
@@ -66,13 +75,17 @@ def main() -> None:
             for name, price in group:
                 logger.info(f"    - {name} / {price:,}원")
 
-        # ── Step 3: 옵션 조합 생성 ──
-        rows = generate_combinations(option_groups, logger)
+        # ── Step 4: 옵션 조합 생성 ──
+        rows = generate_combinations(
+            option_groups, logger,
+            base_price=base_price,
+            allow_minus=allow_minus,
+        )
 
-        # ── Step 4: 엑셀 파일 저장 ──
+        # ── Step 5: 엑셀 파일 저장 ──
         output_path = write_excel(rows, RESULT_DIR, logger)
 
-        # ── Step 5: 최종 결과 출력 ──
+        # ── Step 6: 최종 결과 출력 ──
         logger.info("=" * 60)
         logger.info("✔ 프로그램 실행 완료")
         logger.info(f"  옵션 그룹 수  : {len(option_groups)}개")
@@ -82,9 +95,11 @@ def main() -> None:
 
         print("\n" + "=" * 60)
         print("  네이버 옵션 조합 생성 완료!")
-        print(f"  옵션 그룹 수 : {len(option_groups)}개")
-        print(f"  총 조합 수   : {len(rows)}개")
-        print(f"  저장 위치    : {output_path}")
+        print(f"  기본 상품 가격 : {base_price:,}원")
+        print(f"  마이너스 옵션가: {'허용' if allow_minus else '0원으로 치환'}")
+        print(f"  옵션 그룹 수   : {len(option_groups)}개")
+        print(f"  총 조합 수     : {len(rows)}개")
+        print(f"  저장 위치      : {output_path}")
         print("=" * 60 + "\n")
 
     except FileNotFoundError as e:
